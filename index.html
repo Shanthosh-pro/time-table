@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Planner</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+    background: #f9f9f9;
+  }
+  header {
+    background: #1976d2;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+  }
+  nav {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top:10px;
+  }
+  nav button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #2196f3;
+    color: white;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  nav button.active {
+    background-color: #0d47a1;
+  }
+  main {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 1rem;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #ccc;
+  }
+  .hidden {
+    display: none;
+  }
+  /* Timetable */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: center;
+  }
+  input[type=text], input[type=time] {
+    width: 100%;
+    padding: 4px 6px;
+    margin: 2px 0;
+    box-sizing: border-box;
+  }
+  button.add-btn {
+    background: #388e3c;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-top: 5px;
+  }
+  /* To-do */
+  #todo-list label {
+    display:flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    background:#e3f2fd;
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+  #todo-list label.completed {
+    text-decoration: line-through;
+    color: #777;
+  }
+  button.pdf-btn {
+    background: #1976d2;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Student Planner</h1>
+  <nav>
+    <button id="tab-timetable" class="active">Timetable</button>
+    <button id="tab-todo">To-Do List</button>
+  </nav>
+</header>
+
+<main>
+  <section id="timetable-section">
+    <h2>Timetable</h2>
+    <form id="timetable-form">
+      <input type="text" id="class-name" placeholder="Class or Study Name" required />
+      <input type="time" id="start-time" required />
+      <input type="time" id="end-time" required />
+      <button type="submit" class="add-btn">Add Class</button>
+    </form>
+    <table>
+      <thead>
+        <tr><th>Class/Study</th><th>Start Time</th><th>End Time</th><th>Action</th></tr>
+      </thead>
+      <tbody id="timetable-body">
+      </tbody>
+    </table>
+    <button id="download-timetable" class="pdf-btn">Download Timetable PDF</button>
+  </section>
+
+  <section id="todo-section" class="hidden">
+    <h2>To-Do List</h2>
+    <form id="todo-form">
+      <input type="text" id="task-text" placeholder="Task" required />
+      <input type="date" id="task-date" required />
+      <button type="submit" class="add-btn">Add Task</button>
+    </form>
+    <div id="todo-list">
+    </div>
+    <button id="download-todo" class="pdf-btn">Download To-Do PDF</button>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  const { jsPDF } = window.jspdf;
+
+  // Navigation tabs
+  const tabTimetableBtn = document.getElementById('tab-timetable');
+  const tabTodoBtn = document.getElementById('tab-todo');
+  const timetableSection = document.getElementById('timetable-section');
+  const todoSection = document.getElementById('todo-section');
+
+  tabTimetableBtn.onclick = () => {
+    tabTimetableBtn.classList.add('active');
+    tabTodoBtn.classList.remove('active');
+    timetableSection.classList.remove('hidden');
+    todoSection.classList.add('hidden');
+  };
+
+  tabTodoBtn.onclick = () => {
+    tabTodoBtn.classList.add('active');
+    tabTimetableBtn.classList.remove('active');
+    todoSection.classList.remove('hidden');
+    timetableSection.classList.add('hidden');
+  };
+
+  // Timetable logic
+  const timetableForm = document.getElementById('timetable-form');
+  const timetableBody = document.getElementById('timetable-body');
+
+  let timetableEntries = [];
+
+  function renderTimetable(){
+    timetableBody.innerHTML = '';
+    timetableEntries.forEach((entry, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${entry.name}</td>
+        <td>${entry.start}</td>
+        <td>${entry.end}</td>
+        <td><button onclick="removeTimetableEntry(${idx})">Remove</button></td>
+      `;
+      timetableBody.appendChild(tr);
+    });
+  }
+
+  function removeTimetableEntry(index){
+    timetableEntries.splice(index, 1);
+    renderTimetable();
+  }
+
+  timetableForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('class-name').value.trim();
+    const start = document.getElementById('start-time').value;
+    const end = document.getElementById('end-time').value;
+    if(!name || !start || !end){
+      alert('Please fill all fields.');
+      return;
+    }
+    if(end <= start){
+      alert('End time must be after start time.');
+      return;
+    }
+    timetableEntries.push({name, start, end});
+    renderTimetable();
+    timetableForm.reset();
+  });
+
+  document.getElementById('download-timetable').addEventListener('click', () => {
+    if(timetableEntries.length === 0){
+      alert('No timetable entries to download.');
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Student Timetable', 14, 20);
+    doc.setFontSize(12);
+    timetableEntries.forEach((entry, i) => {
+      doc.text(`${entry.name}: ${entry.start} - ${entry.end}`, 14, 30 + (i * 10));
+    });
+    doc.save('timetable.pdf');
+  });
+
+  // To-Do List logic
+  const todoForm = document.getElementById('todo-form');
+  const todoList = document.getElementById('todo-list');
+
+  let todoEntries = [];
+
+  function renderTodoList(){
+    todoList.innerHTML = '';
+    todoEntries.forEach((entry, idx) => {
+      const label = document.createElement('label');
+      label.className = entry.completed ? 'completed' : '';
+      label.innerHTML = `
+        <span>${entry.task} (Due: ${entry.date})</span> <input type="checkbox" ${entry.completed ? 'checked' : ''} />
+      `;
+      const checkbox = label.querySelector('input[type=checkbox]');
+      checkbox.addEventListener('change', () => {
+        todoEntries[idx].completed = checkbox.checked;
+        renderTodoList();
+      });
+      todoList.appendChild(label);
+    });
+  }
+
+  todoForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const task = document.getElementById('task-text').value.trim();
+    const date = document.getElementById('task-date').value;
+    if(!task || !date){
+      alert('Please fill all fields.');
+      return;
+    }
+    todoEntries.push({task, date, completed: false});
+    renderTodoList();
+    todoForm.reset();
+  });
+
+  document.getElementById('download-todo').addEventListener('click', () => {
+    if(todoEntries.length === 0){
+      alert('No tasks to download.');
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('To-Do List', 14, 20);
+    doc.setFontSize(12);
+    todoEntries.forEach((entry, i) => {
+      const status = entry.completed ? '[Done]' : '[Pending]';
+      doc.text(`${entry.task} (Due: ${entry.date}) ${status}`, 14, 30 + (i * 10));
+    });
+    doc.save('todo_list.pdf');
+  });
+</script>
+
+</body>
+</html>
